@@ -9,8 +9,13 @@
 #include <iostream>
 #include <cstring>
 #include "Leap.h"
+#include "sockets/server.hpp"
+#include "utilities/logging.hpp"
 
 using namespace Leap;
+using namespace DoubTech::Sockets;
+
+#define TAG "RemoteLeap"
 
 class SampleListener : public Listener {
   public:
@@ -33,11 +38,11 @@ const std::string boneNames[] = {"Metacarpal", "Proximal", "Middle", "Distal"};
 const std::string stateNames[] = {"STATE_INVALID", "STATE_START", "STATE_UPDATE", "STATE_END"};
 
 void SampleListener::onInit(const Controller& controller) {
-  std::cout << "Initialized" << std::endl;
+  logd("Leap Service Initialized");
 }
 
 void SampleListener::onConnect(const Controller& controller) {
-  std::cout << "Connected" << std::endl;
+  logd("Leap service Connected");
   controller.enableGesture(Gesture::TYPE_CIRCLE);
   controller.enableGesture(Gesture::TYPE_KEY_TAP);
   controller.enableGesture(Gesture::TYPE_SCREEN_TAP);
@@ -46,11 +51,11 @@ void SampleListener::onConnect(const Controller& controller) {
 
 void SampleListener::onDisconnect(const Controller& controller) {
   // Note: not dispatched when running in a debugger.
-  std::cout << "Disconnected" << std::endl;
+  logd("Leap service Disconnected");
 }
 
 void SampleListener::onExit(const Controller& controller) {
-  std::cout << "Exited" << std::endl;
+  logd("Exited");
 }
 
 void SampleListener::onFrame(const Controller& controller) {
@@ -208,30 +213,36 @@ void SampleListener::onDeviceChange(const Controller& controller) {
 }
 
 void SampleListener::onServiceConnect(const Controller& controller) {
-  std::cout << "Service Connected" << std::endl;
+  logd("Leap Service Connected");
 }
 
 void SampleListener::onServiceDisconnect(const Controller& controller) {
-  std::cout << "Service Disconnected" << std::endl;
+  logd("Leap Service Disconnected");
 }
 
+
 int main(int argc, char** argv) {
-  // Create a sample listener and controller
-  SampleListener listener;
-  Controller controller;
+    // Create a sample listener and controller
+    SampleListener listener;
+    Controller controller;
+    Server server(1234);
 
-  // Have the sample listener receive events from the controller
-  controller.addListener(listener);
+    server.start();
 
-  if (argc > 1 && strcmp(argv[1], "--bg") == 0)
+    // Have the sample listener receive events from the controller
+    controller.addListener(listener);
+
+    if (argc > 1 && strcmp(argv[1], "--bg") == 0)
     controller.setPolicy(Leap::Controller::POLICY_BACKGROUND_FRAMES);
 
-  // Keep this process running until Enter is pressed
-  std::cout << "Press Enter to quit..." << std::endl;
-  std::cin.get();
+    // Keep this process running until Enter is pressed
+    std::cout << "Press Enter to quit..." << std::endl;
+    std::cin.get();
 
-  // Remove the sample listener when done
-  controller.removeListener(listener);
+    // Remove the sample listener when done
+    controller.removeListener(listener);
 
-  return 0;
+    server.stop();
+
+    return 0;
 }
