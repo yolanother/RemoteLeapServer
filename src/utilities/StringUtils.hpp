@@ -10,9 +10,9 @@
 #include <utility>
 #include <cstddef>
 
-#define throwRuntime(...) throw std::runtime_error (buildErrorMessage(TAG, "::", __func__, ": ", __VA_ARGS__))
-#define throwLogicError(...) throw std::logic_error (buildErrorMessage(TAG, "::", __func__, ": ", __VA_ARGS__))
-#define throwDomainError(...) throw std::domain_error (buildErrorMessage(TAG, "::", __func__, ": ", __VA_ARGS__))
+#define throwRuntime(...) throw std::runtime_error (ThorsAnvil::Socket::buildErrorMessage(TAG, "::", __func__, ": ", __VA_ARGS__))
+#define throwLogicError(...) throw std::logic_error (ThorsAnvil::Socket::buildErrorMessage(TAG, "::", __func__, ": ", __VA_ARGS__))
+#define throwDomainError(...) throw std::domain_error (ThorsAnvil::Socket::buildErrorMessage(TAG, "::", __func__, ": ", __VA_ARGS__))
 
 namespace ThorsAnvil
 {

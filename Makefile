@@ -12,30 +12,46 @@ else
   LEAP_LIBRARY := LeapSDK/Mac/lib/libLeap.dylib
 endif
 
-OBJS := bin/basesocket.o bin/socket.o bin/server.o
+MODULES     := utilities utilities/bitpackdata sockets leapdata
+SRC_DIR     := $(addprefix src/,$(MODULES))
+BUILD_DIR   := $(addprefix obj/,$(MODULES)) bin obj
+
+SRC         := $(foreach sdir,$(SRC_DIR),$(wildcard $(sdir)/*.cpp))
+OBJ         := $(patsubst src/%.cpp,obj/%.o,$(SRC))
+INCLUDES    := $(addprefix -I,$(SRC_DIR)) -ILeapSDK/Linux/include
+
+vpath %.cpp $(SRC_DIR)
 
 CC			= $(CXX)
+LD          = $(CXX)
 CXXFLAGS	= -std=c++14
 CXXFLAGS	+= -Wall -pthread
 
-$(shell mkdir -p bin)
+define make-goal
+$1/%.o: %.cpp
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $$< -o $$@
+endef
 
-all: sockets RemoteLeap
+.PHONY: all checkdirs clean
 
-basesocket.o: src/sockets/basesocket.cpp
-	$(CXX) $(CXXFLAGS) -c src/sockets/basesocket.cpp -o bin/basesocket.o
-socket.o: src/sockets/socket.cpp
-	$(CXX) $(CXXFLAGS) -c src/sockets/socket.cpp -o bin/socket.o
-server.o: src/sockets/server.cpp
-	$(CXX) $(CXXFLAGS) -c src/sockets/server.cpp -o bin/server.o
+all: checkdirs cleanbin bin/RemoteLeap
 
-sockets: basesocket.o socket.o server.o
+cleanbin:
+	@rm -rf bin/RemoteLeap
 
-RemoteLeap: src/RemoteLeap.cpp $(OBJS)
-	$(CXX) $(CXXFLAGS) -g -ILeapSDK/Linux/include src/RemoteLeap.cpp -o bin/RemoteLeap $(LEAP_LIBRARY) $(OBJS)
+bin/RemoteLeap: $(OBJ)
+	$(CXX) $(CXXFLAGS) -g -ILeapSDK/Linux/include  $^ src/RemoteLeap.cpp -o $@ $(LEAP_LIBRARY)
 ifeq ($(OS), Darwin)
 	install_name_tool -change @loader_path/libLeap.dylib LeapSDK/Mac/lib/libLeap.dylib bin/RemoteLeap
 endif
 
+
+checkdirs: $(BUILD_DIR)
+
+$(BUILD_DIR):
+	@mkdir -p $@
+
 clean:
-	rm -rf bin/RemoteLeap bin/RemoteLeap.dSYM bin/*.o
+	@rm -rf $(BUILD_DIR)
+
+$(foreach bdir,$(BUILD_DIR),$(eval $(call make-goal,$(bdir))))

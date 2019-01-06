@@ -7,11 +7,12 @@
 
 #include "socket.hpp"
 #include "basesocket.hpp"
+#include "datawriter.hpp"
 
 namespace DoubTech {
     namespace Sockets {
 
-        class Server : public BaseSocket {
+        class Server : public BaseSocket, public DataWriter {
             private:
                 int maxConnectionBacklog = 5;
                 int port;
@@ -21,16 +22,16 @@ namespace DoubTech {
                 void accept();
 
             protected:
-                virtual void onStart();
-                virtual void onStop();
-                virtual int onCreateSocketFd();
+                virtual void onStart() override;
+                virtual void onStop() override;
+                virtual int onCreateSocketFd() override;
 
             public:
                 virtual ~Server() {};
                 Server(int port) : port(port) {};
 
                 void setMaxConectionBacklog(int max) { maxConnectionBacklog = max; }
-                void send(const char* buffer, int len);
+                virtual void send(std::vector<Data> data) override;
         };
     }
 }

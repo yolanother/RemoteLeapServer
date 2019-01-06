@@ -2,6 +2,8 @@
 #include "../utilities/StringUtils.hpp"
 #include "../utilities/logging.hpp"
 
+#include "datawriter.hpp"
+
 #include <unistd.h> 
 #include <stdio.h> 
 #include <sys/socket.h> 
@@ -30,9 +32,9 @@ void Server::accept() {
         }
         logd("Accepted client connection.");
         Socket socket = Socket(newSocket);
-        socket.send("Welcome.", 8);
+        socket.send(Data {"Welcome.\n", 8});
         sockets.push_back(std::move(socket));
-        send("New client connected.", 21);
+        DataWriter::send(Data {"New client connected.", 21});
     }
 }
 
@@ -82,8 +84,8 @@ int Server::onCreateSocketFd() {
     return socketFd;
 }
 
-void Server::send(const char* buffer, int len) {
+void Server::send(std::vector<Data> data) {
     for(auto it = sockets.begin(); it < sockets.end(); it++) {
-        it->send(buffer, len);
+        it->send(data);
     }
 }

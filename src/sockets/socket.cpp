@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <sstream>
 #include <stdexcept>
+#include <string.h>
 
 using namespace DoubTech::Sockets;
 using namespace ThorsAnvil::Socket;
@@ -43,7 +44,7 @@ void Socket::disconnect() {
     socketFd = INVALID_SOCKET_ID;
 }
 
-void Socket::send(char const *buffer, int len) {
+void Socket::send(const char *buffer, size_t len) {
     if(INVALID_SOCKET_ID == socketFd) {
         throwRuntime("Sending data on a disconnected socket");
     }

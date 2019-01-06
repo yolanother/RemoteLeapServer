@@ -5,9 +5,11 @@
 #include <thread>
 #include <sys/socket.h>
 
+#include "datawriter.hpp"
+
 namespace DoubTech {
     namespace Sockets {
-        class Socket {
+        class Socket : public DataWriter {
             void runSocketThread();
 
             public:
@@ -24,7 +26,15 @@ namespace DoubTech {
                 virtual ~Socket();
 
                 void disconnect();
-                void send(char const *buffer, int len);
+                void send(const char* buffer, size_t len);
+                virtual void send(std::vector<Data> data) override {
+                    for(Data data : data) {
+                        send(data.data(), data.length());
+                    }
+                }
+                virtual void send(Data data) override {
+                    DataWriter::send(data);
+                }
             private:
                 int socketFd;
                 std::thread socketThread;
