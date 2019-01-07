@@ -18,10 +18,17 @@ using namespace DoubTech::Utils;
 
 void BitpackDataBuffer::setCapacity(uint32_t bitCapacity) {
     bitSize = bitCapacity;
-    bufSize = std::ceil(bitCapacity / 8.0f);
+    uint32_t bufSize = std::ceil(bitCapacity / 8.0f);
     if(byteBuffer.size() < bufSize) {
         byteBuffer.resize(bufSize, 0);
+    } else {
+        // TODO: Fix cases where buffer is partially bigger and not full buff gets reset
+        // by resize.
+        for(int i = this->bufSize + 1; i < bufSize; i++) {
+            byteBuffer[i] = 0;
+        }
     }
+    this->bufSize = bufSize;
 }
 
 void BitpackDataBuffer::bitCopyData(const uint8_t* src, uint8_t *dst, uint32_t srcBitIndex, uint32_t dstBitIndex, size_t bitCount, bool clearTargetBytes) {

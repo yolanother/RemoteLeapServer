@@ -7,31 +7,38 @@
 
 #include <math.h>
 #include <cmath>
+#include <iostream>
 
 namespace DoubTech {
     namespace RemoteLeap {
 
         enum PositionBuckets {
-            TinyBucket,
-            SmallBucket,
-            MediumBucket,
-            LargeBucket,
-            HugeBucket
+            BucketMin = 0,
+            Bucket_8 = 0,
+            Bucket_10,
+            Bucket_13,
+            Bucket_16,
+            Bucket_19,
+            Bucket_20,
+            Bucket_24,
+            Bucket_32,
+            BucketMax
         };
 
         enum Precision {
             TinyPrecision,
             LowPrecision,
             MediumPrecision,
-            HighPrecision
+            HighPrecision,
+            PrecisionMax
         };
 
         struct HandDataFormat {
             const size_t flags = 8;
             const size_t activeHands = 2;
             const size_t precision = 2;
-            const size_t positionBucket = 2;
-            const size_t coordBucket = 2;
+            const size_t rootPositionBucket = 3;
+            const size_t boneBucketSize = 3;
             const size_t rotation = 32;
         };
 
@@ -45,15 +52,18 @@ namespace DoubTech {
                 DoubTech::Utils::BitpackDataBuffer buffer;
 
 
-                const uint PositionBucketSizes[5] {
+                const uint PositionBucketSizes[BucketMax] {
+                    8,
+                    10,
                     13,
                     16,
                     19,
                     20,
+                    24,
                     32
                 };
 
-                const uint PrecisionValues[4] {
+                const uint PrecisionValues[PrecisionMax] {
                     100,
                     1000,
                     10000,
@@ -61,16 +71,10 @@ namespace DoubTech {
                 };
 
                 Precision precision = Precision::LowPrecision;
-                PositionBuckets positionBucket = PositionBuckets::MediumBucket;
+                PositionBuckets positionBucket = PositionBuckets::Bucket_19;
 
                 inline long ftol(float value) {
                     return PrecisionValues[precision] * value;
-                }
-
-                inline void addCoords(std::vector<uint32_t> &coords, Leap::Vector position) {
-                    coords.push_back(ftol(position.x));
-                    coords.push_back(ftol(position.y));
-                    coords.push_back(ftol(position.z));
                 }
                 
                 inline long maxv(const Leap::Vector& source, const Leap::Vector& dest) {
@@ -79,6 +83,45 @@ namespace DoubTech {
                     max = std::max(abs(ftol(dest.z) - ftol(source.z)), max);
                     return max;
                 }
+
+                inline void encodeHand(const Leap::Hand& hand, int boneCoordSize) {
+                    for(Leap::Finger finger : hand.fingers()) {
+                        encodeFinger(hand, finger, boneCoordSize);
+                    }
+                }
+
+                inline void encodeFinger(const Leap::Hand& hand, const Leap::Finger &finger, int boneCoordSize) {
+                    for(int b = 0; b < 4; ++b) {
+                        Leap::Bone bone = finger.bone(static_cast<Leap::Bone::Type>(b));
+                        Leap::Vector joint = bone.nextJoint() - (b > 0 ? bone.prevJoint() : hand.palmPosition());
+                        encodeCoordinate(joint.x, boneCoordSize, false);
+                        encodeCoordinate(joint.y, boneCoordSize, false);
+                        encodeCoordinate(joint.z, boneCoordSize, false);
+                    }
+                }
+
+                inline void encodeCoordinate(const float &coord, int boneCoordSize, bool debug) {
+                    bool isNegative = coord > 0;
+                    long position = abs(ftol(coord));
+                    boneCoordSize = PositionBucketSizes[boneCoordSize];
+                    if(debug) std::cout << " " << position << " (" << (int) (log2(position) + 1) << "/" << boneCoordSize << ") " << std::bitset<19>(position) << "  ";
+                    buffer.addData(1, &isNegative);
+                    buffer.addData(boneCoordSize, &position);
+                }
+
+                inline PositionBuckets getBucketSize(long max) {
+                    int container = max > 0 ? log2(max) + 1 : 0;
+                    PositionBuckets coordBucketSize = BucketMax;
+                    for(int i = BucketMin; i < BucketMax; i++) {
+                        if(container < PositionBucketSizes[i]) {
+                            coordBucketSize = static_cast<PositionBuckets>(i);
+                            break;
+                        }
+                    }
+                    return coordBucketSize;
+                }
+
+                void debugHeader();
             protected:
                 virtual const uint8_t* onGetDataBuffer() override {
                     return buffer.data();

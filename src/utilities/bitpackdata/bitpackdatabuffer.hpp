@@ -4,6 +4,7 @@
 #include <vector>
 #include <memory>
 #include <cmath>
+#include <bitset>
 
 namespace DoubTech {
     namespace Utils {

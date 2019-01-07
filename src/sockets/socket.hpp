@@ -25,6 +25,8 @@ namespace DoubTech {
                 Socket& operator=(Socket const&)    = delete;
                 virtual ~Socket();
 
+                bool isAlive();
+                bool checkStatus();
                 void disconnect();
                 void send(const char* buffer, size_t len);
                 virtual void send(std::vector<Data> data) override {

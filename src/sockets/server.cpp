@@ -30,11 +30,9 @@ void Server::accept() {
             if(errno == 53) break;
             throwRuntime("accept: ", strerror(errno), " [", errno, "]");
         }
-        logd("Accepted client connection.");
+        logd("Accepted new client connection");
         Socket socket = Socket(newSocket);
-        socket.send(Data {"Welcome.\n", 8});
         sockets.push_back(std::move(socket));
-        DataWriter::send(Data {"New client connected.", 21});
     }
 }
 
@@ -85,6 +83,12 @@ int Server::onCreateSocketFd() {
 }
 
 void Server::send(std::vector<Data> data) {
+    for(int i = sockets.size() - 1; i >= 0; --i) {
+        if(!sockets[i].checkStatus()) {
+            sockets.erase(sockets.begin() + i);
+        }
+        sockets[i].send(data);
+    }
     for(auto it = sockets.begin(); it < sockets.end(); it++) {
         it->send(data);
     }

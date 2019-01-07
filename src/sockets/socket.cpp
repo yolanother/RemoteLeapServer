@@ -38,10 +38,29 @@ Socket& Socket::operator=(Socket&& move) noexcept {
 }
 
 void Socket::disconnect() {
-    if (::shutdown(socketFd, SHUT_WR) != 0) {
-        throwRuntime("shutdown: critical error: ", strerror(errno));
+    if(socketFd != INVALID_SOCKET_ID) {
+        if (::shutdown(socketFd, SHUT_WR) != 0) {
+            throwRuntime("shutdown: critical error: ", strerror(errno));
+        }
+        socketFd = INVALID_SOCKET_ID;
     }
-    socketFd = INVALID_SOCKET_ID;
+}
+
+bool Socket::checkStatus() {
+    if(!isAlive()) {
+        socketFd = INVALID_SOCKET_ID;
+        return false;
+    }
+    return true;
+}
+
+bool Socket::isAlive() {
+    if(socketFd == INVALID_SOCKET_ID) return false;
+
+    int error_code;
+    socklen_t error_code_size = sizeof(error_code);
+    getsockopt(socketFd, SOL_SOCKET, SO_ERROR, &error_code, &error_code_size);
+    return error_code == 0;
 }
 
 void Socket::send(const char *buffer, size_t len) {
@@ -50,8 +69,7 @@ void Socket::send(const char *buffer, size_t len) {
     }
 
     std::size_t     dataWritten = 0;
-
-    while(dataWritten < len)
+    while(dataWritten < len && socketFd != INVALID_SOCKET_ID)
     {
         std::size_t put = write(socketFd, buffer + dataWritten, len - dataWritten);
         if (put == static_cast<std::size_t>(-1))

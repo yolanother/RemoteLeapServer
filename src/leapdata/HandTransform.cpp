@@ -25,68 +25,68 @@ void HandTransform::encode(Frame frame) {
 
     uint8_t hands = 0;
     
-    std::vector<uint32_t> coords;
     Vector leftPalm;
     Vector rightPalm;
+
+    int handIndex = 0;
+    int leftHandIndex = -1;
+    int rightHandIndex = -1;
 
     long max = 0;
     for(auto hand : frame.hands()) {
         if(hand.isLeft()) {
+            leftHandIndex = handIndex++;
             hands |= LeftHand;
             leftPalm = hand.palmPosition();
         } else {
+            rightHandIndex = handIndex++;
             hands |= RightHand;
             rightPalm = hand.palmPosition();
         }
         max = std::max(max, maxv(hand.palmPosition(), hand.wristPosition()));
-        addCoords(coords, hand.wristPosition() - hand.palmPosition());
         for(Finger finger : hand.fingers()) {
             for(int b = 0; b < 4; ++b) {
                 Bone bone = finger.bone(static_cast<Bone::Type>(b));
                 Vector prev = b > 0 ? bone.prevJoint() : hand.palmPosition();
                 max = std::max(max, maxv(prev, bone.nextJoint()));
-                addCoords(coords, bone.nextJoint() - prev);
             }
         }
     }
 
-    logd("Hand max vector: ", max);
-    int container = max > 0 ? log2(max) + 1 : 0;
-    logd("Bit container size: ", container);
-
-    PositionBuckets coordBucketSize = HugeBucket;
-    for(int i = TinyBucket; i < HugeBucket; i++) {
-        if(container < PositionBucketSizes[i]) {
-            coordBucketSize = static_cast<PositionBuckets>(i);
-            break;
-        }
-    }
-
-    int boneCoordSize = PositionBucketSizes[positionBucket];
-    int palmCoordSize = log2(PrecisionValues[precision] * 500) + 1;
+    int boneCoordSize = getBucketSize(max);
+    int palmCoordSize = getBucketSize(PrecisionValues[precision] * 500) + 1;
 
     buffer.reset();
     buffer.addData(format.activeHands, &hands);
     buffer.addData(format.precision, &precision);
-    buffer.addData(format.coordBucket, &coordBucketSize);
-    buffer.addData(format.positionBucket, &positionBucket);
+    buffer.addData(format.rootPositionBucket, &palmCoordSize);
+    buffer.addData(format.boneBucketSize, &boneCoordSize);
     if((hands & LeftHand) > 0) {
-        long coord = ftol(leftPalm.x);
-        buffer.addData(palmCoordSize, &coord);
-        coord = ftol(leftPalm.y);
-        buffer.addData(palmCoordSize, &coord);
-        coord = ftol(leftPalm.z);
-        buffer.addData(palmCoordSize, &coord);
+        encodeCoordinate(leftPalm.x, palmCoordSize, true);
+        encodeCoordinate(leftPalm.y, palmCoordSize, true);
+        encodeCoordinate(leftPalm.z, palmCoordSize, true);
+        encodeHand(frame.hands()[leftHandIndex], boneCoordSize);
     }
     if((hands & RightHand) > 0) {
-        long coord = ftol(rightPalm.x);
-        buffer.addData(palmCoordSize, &coord);
-        coord = ftol(rightPalm.y);
-        buffer.addData(palmCoordSize, &coord);
-        coord = ftol(rightPalm.z);
+        encodeCoordinate(rightPalm.x, palmCoordSize, true);
+        encodeCoordinate(rightPalm.y, palmCoordSize, true);
+        encodeCoordinate(rightPalm.z, palmCoordSize, true);
+        encodeHand(frame.hands()[rightHandIndex], boneCoordSize);
     }
-    for(auto coord : coords) {
-        buffer.addData(boneCoordSize, &coord);
-    }
+    
+    std::cout << std::endl;
+    logd("Active Hands: ", (int) hands, ", Precision: ", (int) precision, " palmCoordSize: ", (int) palmCoordSize, ", boneCoordSize: ", (int) boneCoordSize);
+    
     logd("Data capacity: ", buffer.size());
+    debugHeader();
+}
+
+void HandTransform::debugHeader() {
+    std::cout << "Header: ";
+    for(int i = 0; i < 4; i++) {
+        uint8_t data = buffer.data()[i];
+        std::bitset<8> x(data);
+        std::cout << x << " ";
+    }
+    std::cout << std::endl;
 }
