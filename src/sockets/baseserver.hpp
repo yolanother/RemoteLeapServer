@@ -6,11 +6,11 @@
 
 #include <sys/socket.h>
 
-#include "socket.hpp"
+#include "datawriter.hpp"
 
 namespace DoubTech {
     namespace Sockets {
-        class BaseSocket {
+        class BaseServer : public DataWriter {
             private:
                 int socketFd;
 
@@ -25,13 +25,13 @@ namespace DoubTech {
                 static const int INVALID_SOCKET_ID = -1;
                 
                 // Moveable but not Copyable
-                BaseSocket(BaseSocket&& move)               noexcept;
-                BaseSocket& operator=(BaseSocket&& move)    noexcept;
-                void swap(BaseSocket& other)                noexcept;
-                BaseSocket(BaseSocket const&)               = delete;
-                BaseSocket& operator=(BaseSocket const&)    = delete;
-                BaseSocket();
-                virtual ~BaseSocket();
+                BaseServer(BaseServer&& move)               noexcept;
+                BaseServer& operator=(BaseServer&& move)    noexcept;
+                void swap(BaseServer& other)                noexcept;
+                BaseServer(BaseServer const&)               = delete;
+                BaseServer& operator=(BaseServer const&)    = delete;
+                BaseServer();
+                virtual ~BaseServer();
 
                 void stop();
                 void start();

@@ -1,4 +1,4 @@
-#include "basesocket.hpp"
+#include "baseserver.hpp"
 #include "../utilities/StringUtils.hpp"
 #include "../utilities/logging.hpp"
 
@@ -8,35 +8,36 @@
 using namespace DoubTech::Sockets;
 using namespace ThorsAnvil::Socket;
 
-#define TAG "BaseSocket"
+#define TAG "BaseServer"
 
-BaseSocket::BaseSocket() : socketFd(INVALID_SOCKET_ID) {
+BaseServer::BaseServer() : socketFd(INVALID_SOCKET_ID) {
 
 }
 
-BaseSocket::~BaseSocket() {
+BaseServer::~BaseServer() {
     if(socketFd != INVALID_SOCKET_ID) {
-        stop();
+        logw("Socket was not shut down before destroying server object. ");
+        close(socketFd);
     }
 }
 
 // Move Semantics
-void BaseSocket::swap(BaseSocket& other) noexcept {
+void BaseServer::swap(BaseServer& other) noexcept {
     using std::swap;
     swap(socketFd, other.socketFd);
 }
 
-BaseSocket::BaseSocket(BaseSocket&& move) noexcept
+BaseServer::BaseServer(BaseServer&& move) noexcept
     : socketFd(INVALID_SOCKET_ID) {
     move.swap(*this);
 }
 
-BaseSocket& BaseSocket::operator=(BaseSocket&& move) noexcept {
+BaseServer& BaseServer::operator=(BaseServer&& move) noexcept {
     move.swap(*this);
     return *this;
 }
 
-void BaseSocket::start() {
+void BaseServer::start() {
     if(this->socketFd != INVALID_SOCKET_ID) {
         stop();
     }
@@ -45,10 +46,11 @@ void BaseSocket::start() {
     onStart();
 }
 
-void BaseSocket::stop() {
+void BaseServer::stop() {
     if(INVALID_SOCKET_ID != socketFd) {
         logd("Stopping socket...");
         close(socketFd);
+        socketFd = INVALID_SOCKET_ID;
         onStop();
     }
 }

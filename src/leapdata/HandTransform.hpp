@@ -71,7 +71,6 @@ namespace DoubTech {
                 };
 
                 Precision precision = Precision::LowPrecision;
-                PositionBuckets positionBucket = PositionBuckets::Bucket_19;
 
                 inline long ftol(float value) {
                     return PrecisionValues[precision] * value;
@@ -91,20 +90,23 @@ namespace DoubTech {
                 }
 
                 inline void encodeFinger(const Leap::Hand& hand, const Leap::Finger &finger, int boneCoordSize) {
+                    std::cout << std::endl;
                     for(int b = 0; b < 4; ++b) {
                         Leap::Bone bone = finger.bone(static_cast<Leap::Bone::Type>(b));
                         Leap::Vector joint = bone.nextJoint() - (b > 0 ? bone.prevJoint() : hand.palmPosition());
-                        encodeCoordinate(joint.x, boneCoordSize, false);
-                        encodeCoordinate(joint.y, boneCoordSize, false);
-                        encodeCoordinate(joint.z, boneCoordSize, false);
-                    }
+                        
+                        encodeCoordinate(joint.x, boneCoordSize, true);
+                        encodeCoordinate(joint.y, boneCoordSize, true);
+                        encodeCoordinate(joint.z, boneCoordSize, true);
+                    }std::cout << std::endl;
+                    
                 }
 
                 inline void encodeCoordinate(const float &coord, int boneCoordSize, bool debug) {
                     bool isNegative = coord > 0;
                     long position = abs(ftol(coord));
                     boneCoordSize = PositionBucketSizes[boneCoordSize];
-                    if(debug) std::cout << " " << position << " (" << (int) (log2(position) + 1) << "/" << boneCoordSize << ") " << std::bitset<19>(position) << "  ";
+                    if(debug) std::cout << " " << position / PrecisionValues[precision] << " (" << (int) (log2(position) + 1) << "/" << boneCoordSize << ") " << std::bitset<19>(position) << "  ";
                     buffer.addData(1, &isNegative);
                     buffer.addData(boneCoordSize, &position);
                 }

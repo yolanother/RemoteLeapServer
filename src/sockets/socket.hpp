@@ -29,13 +29,8 @@ namespace DoubTech {
                 bool checkStatus();
                 void disconnect();
                 void send(const char* buffer, size_t len);
-                virtual void send(std::vector<Data> data) override {
-                    for(Data data : data) {
-                        send(data.data(), data.length());
-                    }
-                }
                 virtual void send(Data data) override {
-                    DataWriter::send(data);
+                    send(data.data(), data.length());
                 }
             private:
                 int socketFd;

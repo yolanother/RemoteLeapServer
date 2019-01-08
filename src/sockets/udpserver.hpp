@@ -1,25 +1,20 @@
-#ifndef DT_SOCKET_SERVER
-#define DT_SOCKET_SERVER
+#ifndef UDP_SERVER_H
+#define UDP_SERVER_H
 
 #include <vector>
 #include <thread>
 #include <sys/socket.h>
 
 #include "socket.hpp"
-#include "basesocket.hpp"
+#include "baseserver.hpp"
 #include "datawriter.hpp"
 
 namespace DoubTech {
     namespace Sockets {
-
-        class Server : public BaseSocket, public DataWriter {
+        class UdpServer : public BaseServer {
             private:
                 int maxConnectionBacklog = 5;
                 int port;
-                std::vector<Socket> sockets;
-                std::thread acceptThread;
-
-                void accept();
 
             protected:
                 virtual void onStart() override;
@@ -27,11 +22,11 @@ namespace DoubTech {
                 virtual int onCreateSocketFd() override;
 
             public:
-                virtual ~Server() {};
-                Server(int port) : port(port) {};
+                virtual ~UdpServer() {};
+                UdpServer(int port) : port(port) {};
 
                 void setMaxConectionBacklog(int max) { maxConnectionBacklog = max; }
-                virtual void send(std::vector<Data> data) override;
+                virtual void send(Data data) override;
         };
     }
 }

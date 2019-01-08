@@ -4,7 +4,8 @@
 #include <cstdlib>
 
 #include "Leap.h"
-#include "sockets/server.hpp"
+#include "sockets/tcpserver.hpp"
+#include "sockets/udpserver.hpp"
 #include "utilities/logging.hpp"
 #include "leapdata/HandTransform.hpp"
 
@@ -30,8 +31,14 @@ class RemoteLeapServer : public Listener
         virtual void onServiceConnect(const Controller &);
         virtual void onServiceDisconnect(const Controller &);
 
-        void createServer(int port) {
-            server = std::make_shared<Server>(port);
+        void createServer(int port, bool udp) {
+            if(udp) {
+                logd("Starting UDP server...");
+                server = std::make_shared<UdpServer>(port);
+            } else {
+                logd("Starting TCP server on port ", port, "...");
+                server = std::make_shared<TcpServer>(port);
+            }
             server->start();
         }
 
@@ -45,7 +52,7 @@ class RemoteLeapServer : public Listener
 
     private:
         HandTransform transform;
-        std::shared_ptr<Server> server;
+        std::shared_ptr<BaseServer> server;
         bool loggingEnabled;
 };
 
@@ -160,6 +167,7 @@ int main(int argc, char **argv)
     RemoteLeapServer listener;
     Controller controller;
     int port = 4444;
+    bool udp = true;
 
     // Have the sample listener receive events from the controller
     controller.addListener(listener);
@@ -170,7 +178,7 @@ int main(int argc, char **argv)
     }
 
     int c;
-    while ((c = getopt(argc, argv, "vbp:")) != -1)
+    while ((c = getopt(argc, argv, "tvbp:")) != -1)
     {
         switch (c)
         {
@@ -180,6 +188,9 @@ int main(int argc, char **argv)
         case 'b':
             controller.setPolicy(Leap::Controller::POLICY_BACKGROUND_FRAMES);
             break;
+        case 't':
+            udp = false;
+            break;
         case 'p':
             if (optarg)
                 port = std::atoi(optarg);
@@ -187,7 +198,7 @@ int main(int argc, char **argv)
         }
     }
 
-    listener.createServer(port);
+    listener.createServer(port, udp);
 
     // Keep this process running until Enter is pressed
     std::cout << "Press Enter to quit..." << std::endl;

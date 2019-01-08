@@ -1,4 +1,4 @@
-#include "server.hpp"
+#include "tcpserver.hpp"
 #include "../utilities/StringUtils.hpp"
 #include "../utilities/logging.hpp"
 
@@ -15,9 +15,9 @@
 using namespace DoubTech::Sockets;
 using namespace ThorsAnvil::Socket;
 
-#define TAG "Server"
+#define TAG "TcpServer"
 
-void Server::accept() {
+void TcpServer::accept() {
     const int socketFd = getSocketFd();
     while (socketFd != INVALID_SOCKET_ID) {
         struct  sockaddr_storage    serverStorage;
@@ -36,11 +36,11 @@ void Server::accept() {
     }
 }
 
-void Server::onStart() {
+void TcpServer::onStart() {
     acceptThread = std::thread( [=] { accept(); } );
 }
 
-void Server::onStop() {
+void TcpServer::onStop() {
     for(auto it = sockets.begin(); it < sockets.end(); it++) {
         it->disconnect();
     }
@@ -49,7 +49,7 @@ void Server::onStop() {
     acceptThread.join();
 }
 
-int Server::onCreateSocketFd() {
+int TcpServer::onCreateSocketFd() {
     logd("Creating socket...");
     int socketFd = ::socket(PF_INET, SOCK_STREAM, 0);
 
@@ -82,7 +82,7 @@ int Server::onCreateSocketFd() {
     return socketFd;
 }
 
-void Server::send(std::vector<Data> data) {
+void TcpServer::send(Data data) {
     for(int i = sockets.size() - 1; i >= 0; --i) {
         if(!sockets[i].checkStatus()) {
             sockets.erase(sockets.begin() + i);

@@ -19,10 +19,7 @@ namespace DoubTech {
 
         class DataWriter {
             public:
-                virtual void send(std::vector<Data> data) = 0;
-                virtual void send(Data data) {
-                    send(std::vector<Data>{data});
-                }
+                virtual void send(Data data) = 0;
         };
     }
 }
