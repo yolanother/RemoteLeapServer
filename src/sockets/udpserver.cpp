@@ -16,7 +16,7 @@ using namespace DoubTech::Sockets;
 using namespace ThorsAnvil::Socket;
 
 #define TAG "UdpServer"
-
+/*
 void UdpServer::onStart() {
     
 }
@@ -25,9 +25,13 @@ void UdpServer::onStop() {
     
 }
 
+bool UdpServer::onReceive(const char* data, size_t len) {
+    return false;
+}
+
 int UdpServer::onCreateSocketFd() {
     logd("Creating socket...");
-    int socketFd = ::socket(PF_INET, SOCK_STREAM, 0);
+    int socketFd = ::socket(PF_INET, SOCK_DGRAM, 0);
 
     if(socketFd == INVALID_SOCKET_ID) {
         throwRuntime(": Error creating socket handle.", strerror(errno));
@@ -48,13 +52,6 @@ int UdpServer::onCreateSocketFd() {
     }
     logd("  - done.");
 
-    logd("Listening for connections...");
-    if (::listen(socketFd, maxConnectionBacklog) != 0) {
-        ::close(socketFd);
-        throwRuntime("listen: ", strerror(errno));
-    }
-    logd("  - done.");
-
     return socketFd;
 }
 
@@ -62,8 +59,10 @@ void UdpServer::send(Data data) {
     struct sockaddr_in cliaddr; 
 
     int socketFd = getSocketFd();
+    logd("About to send...");
     if(INVALID_SOCKET_ID != socketFd) {
-        logd("Sending ", (int) data.length(), " bytes");
-        ::send(getSocketFd(), data.data(), data.length(), 0); 
+        logd("Sending ", (int) data.length(), " bytes to ", (int) socketFd);
+        ::send(socketFd, data.data(), data.length(), 0); 
     }
 }
+*/

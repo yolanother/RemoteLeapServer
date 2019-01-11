@@ -18,35 +18,41 @@ using namespace ThorsAnvil::Socket;
 #define TAG "TcpServer"
 
 void TcpServer::accept() {
-    const int socketFd = getSocketFd();
-    while (socketFd != INVALID_SOCKET_ID) {
-        struct  sockaddr_storage    serverStorage;
-        socklen_t                   addr_size   = sizeof serverStorage;
-        
-        logd("Waiting for client connections...");
-        int newSocket = ::accept(socketFd, (struct sockaddr*)&serverStorage, &addr_size);
-        if (newSocket == INVALID_SOCKET_ID) {
-            // If the socket has been shutdown leave the main thread.
-            if(errno == 53) break;
-            throwRuntime("accept: ", strerror(errno), " [", errno, "]");
+    logd("Waiting for client connections...");
+    while (isConnected()) {
+        try {
+            std::shared_ptr<TcpConnection> connection = std::make_shared<TcpConnection>(this);     
+            connection->start();
+            if(isConnected() && connection->isConnected()) {
+                logd("Accepted new client connection");
+                mutex.lock();
+                connections.push_back(connection);
+                mutex.unlock();
+            }
+        } catch (const std::exception &exc) {
+            // catch anything thrown within try block that derives from std::exception
+            loge(exc.what());
+        } catch (...) {
+            loge("Unknown error happened in the accept thread.");
         }
-        logd("Accepted new client connection");
-        Socket socket = Socket(newSocket);
-        sockets.push_back(std::move(socket));
     }
 }
 
 void TcpServer::onStart() {
+    connected = true;
     acceptThread = std::thread( [=] { accept(); } );
 }
 
 void TcpServer::onStop() {
-    for(auto it = sockets.begin(); it < sockets.end(); it++) {
-        it->disconnect();
+    connected = false;
+    for(auto connection : connections) {
+        connection->stop();
     }
 
-    sockets.clear();
-    acceptThread.join();
+    connections.clear();
+    if(acceptThread.joinable()) {
+        acceptThread.join();
+    }
 }
 
 int TcpServer::onCreateSocketFd() {
@@ -82,14 +88,139 @@ int TcpServer::onCreateSocketFd() {
     return socketFd;
 }
 
-void TcpServer::send(Data data) {
-    for(int i = sockets.size() - 1; i >= 0; --i) {
-        if(!sockets[i].checkStatus()) {
-            sockets.erase(sockets.begin() + i);
+void TcpServer::removeConnection(const TcpConnection* connection) {
+    mutex.lock();
+    for(auto i = connections.begin(); i < connections.end(); i++) {
+        if(i->get() == connection) {
+            connections.erase(i);
+            break;
         }
-        sockets[i].send(data);
     }
-    for(auto it = sockets.begin(); it < sockets.end(); it++) {
-        it->send(data);
+    mutex.unlock();
+}
+
+void TcpServer::send(std::shared_ptr<IData> data) {
+    {
+        mutex.lock();
+        for(int i = connections.size() - 1; i >= 0; --i) {
+            if(!connections[i]->isConnected()) {
+                connections.erase(connections.begin() + i);
+                logd("Removing dead connection.");
+            }
+        }
+        mutex.unlock();
     }
+    if(connections.size() > 0) logd("Sending data to ", connections.size(), " connections.");
+    for(auto connection : connections) {
+        connection->send(data);
+    }
+}
+
+bool TcpServer::isConnected() {
+    return connected && getSocketFd() != INVALID_SOCKET_ID;
+}
+
+int TcpServer::TcpConnection::onCreateSocketFd() {
+    int serverSocketFd = server->getSocketFd();
+    if(serverSocketFd == INVALID_SOCKET_ID) {
+        throwRuntime("Server socket fd is invalid.");
+    }
+
+    struct  sockaddr_storage    serverStorage;
+    socklen_t                   addr_size   = sizeof serverStorage;
+    int newSocket = ::accept(serverSocketFd, (struct sockaddr*)&serverStorage, &addr_size);
+    if (newSocket == INVALID_SOCKET_ID) {
+        if(errno != 53) {
+            throwRuntime("Could not accept connection.: ", strerror(errno), " [", errno, "]");
+        }
+        return INVALID_SOCKET_ID;
+    }
+    return newSocket;
+}
+
+bool TcpServer::TcpConnection::isConnected() {
+    int socketFd = getSocketFd();
+    if(socketFd == INVALID_SOCKET_ID) return false;
+
+    int error_code;
+    socklen_t error_code_size = sizeof(error_code);
+    getsockopt(socketFd, SOL_SOCKET, SO_ERROR, &error_code, &error_code_size);
+    return error_code == 0;
+}
+
+void TcpServer::TcpConnection::onStart() {
+    receiveThread = std::thread( [=] { receive(); } );
+}
+
+void TcpServer::TcpConnection::onStop() {
+        logd("Rejoining receive thread.");
+        receiveThread.detach();
+    server->removeConnection(this);
+}
+
+void TcpServer::TcpConnection::receive() {
+    char buffer[bufferSize];
+    try {
+        int socketFd = getSocketFd();
+        while(isConnected()) {
+            std::shared_ptr<Data> data = std::make_shared<Data>();
+            std::size_t dataRead;
+
+            do {
+                dataRead = read(socketFd, buffer, bufferSize);
+                if (dataRead == static_cast<std::size_t>(-1)) {
+                    switch(errno) {
+                        case EAGAIN: {
+                            // Temporary error.
+                            // Simply retry the read.
+                            continue;
+                        }
+                        case EPIPE: {
+                            logd("Remote disconnected. Stopping");
+                        }
+                        default: {
+                            stop();
+                            return;
+                        }
+                    }
+                }
+                data->push_back(buffer, dataRead);
+            } while (dataRead == bufferSize);
+            if(data->size() > 0) onReceive(data);
+        }
+    } catch (const std::exception &exc) {
+        // catch anything thrown within try block that derives from std::exception
+        loge(exc.what());
+    } catch (...) {
+        loge("Unknwon error happened on receive thread.");
+    }
+    logd("No longer receiving on this connenction: ", getSocketFd());
+}
+
+bool TcpServer::TcpConnection::onReceive(std::shared_ptr<Data> data) {
+    server->processReceivedData(data);
+    return false;
+}
+
+
+void TcpServer::TcpConnection::send(std::shared_ptr<IData> data) {
+    std::size_t     dataWritten = 0;
+    int socketFd = getSocketFd();
+    logd("Sending data to ", socketFd);
+    while(dataWritten < data->size()) {
+        std::size_t put = ::write(socketFd, data->data() + dataWritten, data->size() - dataWritten);
+        if (errno != 0) {
+            if(EPIPE == errno) {
+                logd("Remote disconnected. Stopping");
+                stop();
+            } else {
+                loge(buildErrorMessage("DataSocket::", __func__, ": write: failed to write: ", strerror(errno)));
+            }
+            break;
+        } else {
+            dataWritten += put;
+            logd("Sending data: isConnected? ", isConnected(), ", dataWritten: ", dataWritten, "/", data->size());
+        }
+    }
+    logd("Data write complete.");
 }

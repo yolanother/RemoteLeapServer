@@ -45,6 +45,11 @@ ifeq ($(OS), Darwin)
 	install_name_tool -change @loader_path/libLeap.dylib LeapSDK/Mac/lib/libLeap.dylib bin/RemoteLeap
 endif
 
+test-udp-client:
+	$(CXX) $(CXXFLAGS) src/sockets/testclient/test-udp-client.cpp -o bin/test-udp-client
+
+test-udp-server:
+	$(CXX) $(CXXFLAGS) src/sockets/testclient/test-udp-server.cpp -o bin/test-udp-server
 
 checkdirs: $(BUILD_DIR)
 

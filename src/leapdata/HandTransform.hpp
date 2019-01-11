@@ -135,10 +135,10 @@ namespace DoubTech {
                 void encode(Leap::Frame frame);
                 void setPrecision(Precision precision) { this->precision = precision; }
                 virtual void writeData(DoubTech::Sockets::DataWriter& writer) override {
-                    writer.send(DoubTech::Sockets::Data{
+                    writer.send(std::make_shared<DoubTech::Sockets::DataReference>(
                         reinterpret_cast<const char*>(buffer.data()),
                         buffer.size()
-                    });
+                    ));
                 }
         };
     }

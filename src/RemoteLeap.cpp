@@ -32,13 +32,13 @@ class RemoteLeapServer : public Listener
         virtual void onServiceDisconnect(const Controller &);
 
         void createServer(int port, bool udp) {
-            if(udp) {
-                logd("Starting UDP server...");
-                server = std::make_shared<UdpServer>(port);
-            } else {
+            //if(udp) {
+            //    logd("Starting UDP server...");
+            //    server = std::make_shared<UdpServer>(port);
+            //} else {
                 logd("Starting TCP server on port ", port, "...");
                 server = std::make_shared<TcpServer>(port);
-            }
+            //}
             server->start();
         }
 
@@ -47,7 +47,11 @@ class RemoteLeapServer : public Listener
         }
 
         virtual ~RemoteLeapServer() {
-            if(server) server->stop();
+            logd("Shutting down...");
+            if(server) {
+                logd("Stopping server...");
+                server->stop();
+            }
         }
 
     private:
