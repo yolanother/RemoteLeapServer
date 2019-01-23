@@ -202,6 +202,8 @@ int main(int argc, char **argv)
         }
     }
 
+    controller.setPolicy(Leap::Controller::POLICY_OPTIMIZE_HMD);
+
     listener.createServer(port, udp);
 
     // Keep this process running until Enter is pressed

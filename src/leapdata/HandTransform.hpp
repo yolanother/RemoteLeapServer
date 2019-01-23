@@ -39,6 +39,7 @@ namespace DoubTech {
             const size_t precision = 2;
             const size_t rootPositionBucket = 3;
             const size_t boneBucketSize = 3;
+            const size_t boneDirectionSize = 3;
             const size_t rotation = 32;
         };
 
@@ -75,6 +76,13 @@ namespace DoubTech {
                 inline long ftol(float value) {
                     return PrecisionValues[precision] * value;
                 }
+
+                inline long maxv(const Leap::Vector& vector, long max) {
+                    max = std::max(max, abs((long) vector.x));
+                    max = std::max(max, abs((long) vector.y));
+                    max = std::max(max, abs((long) vector.z));
+                    return max;
+                }
                 
                 inline long maxv(const Leap::Vector& source, const Leap::Vector& dest) {
                     long max = abs(ftol(dest.x) - ftol(source.x));
@@ -83,13 +91,13 @@ namespace DoubTech {
                     return max;
                 }
 
-                inline void encodeHand(const Leap::Hand& hand, int boneCoordSize) {
+                inline void encodeHand(const Leap::Hand& hand, int boneCoordSize, int boneDirectionSize) {
                     for(Leap::Finger finger : hand.fingers()) {
-                        encodeFinger(hand, finger, boneCoordSize);
+                        encodeFinger(hand, finger, boneCoordSize, boneDirectionSize);
                     }
                 }
 
-                inline void encodeFinger(const Leap::Hand& hand, const Leap::Finger &finger, int boneCoordSize) {
+                inline void encodeFinger(const Leap::Hand& hand, const Leap::Finger &finger, int boneCoordSize, int boneDirectionSize) {
                     std::cout << std::endl;
                     for(int b = 0; b < 4; ++b) {
                         Leap::Bone bone = finger.bone(static_cast<Leap::Bone::Type>(b));
@@ -98,8 +106,17 @@ namespace DoubTech {
                         encodeCoordinate(joint.x, boneCoordSize, true);
                         encodeCoordinate(joint.y, boneCoordSize, true);
                         encodeCoordinate(joint.z, boneCoordSize, true);
-                    }std::cout << std::endl;
-                    
+
+                        encodeDirection(bone.direction(), boneDirectionSize);
+                    } std::cout << std::endl;
+                }
+
+                inline void encodeDirection(Leap::Vector direction, int boneDirectionSize) {
+                    direction = direction * Leap::RAD_TO_DEG * PrecisionValues[precision];
+                    std::cout << (long) direction.x << ',' << (long) direction.y << ',' << (long) direction.z << std::endl;
+                    encodeCoordinate(direction.x, boneDirectionSize, true);
+                    encodeCoordinate(direction.y, boneDirectionSize, true);
+                    encodeCoordinate(direction.z, boneDirectionSize, true);
                 }
 
                 inline void encodeCoordinate(const float &coord, int boneCoordSize, bool debug) {
