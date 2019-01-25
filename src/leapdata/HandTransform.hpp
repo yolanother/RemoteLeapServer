@@ -54,7 +54,7 @@ namespace DoubTech {
 
 
                 const uint PositionBucketSizes[BucketMax] {
-                    8,
+                    0,
                     10,
                     13,
                     16,
@@ -120,6 +120,7 @@ namespace DoubTech {
                 }
 
                 inline void encodeCoordinate(const float &coord, int boneCoordSize, bool debug) {
+                    if(boneCoordSize == 0) return;
                     bool isNegative = coord > 0;
                     long position = abs(ftol(coord));
                     boneCoordSize = PositionBucketSizes[boneCoordSize];

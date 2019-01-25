@@ -63,7 +63,7 @@ void HandTransform::encode(Frame frame) {
     }
 
     int boneCoordSize = getBucketSize(max);
-    int boneDirectionSize = getBucketSize(maxDirection);
+    int boneDirectionSize = 0;// getBucketSize(maxDirection);
     int palmCoordSize = getBucketSize(PrecisionValues[precision] * 500) + 1;
 
     buffer.reset();
